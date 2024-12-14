@@ -1,4 +1,4 @@
-use ark_bls12_381::{Fr, G2Projective};
+use ark_bls12_381::{Fr, G1Projective, G2Projective};
 use ark_ec::{CurveGroup, PrimeGroup};
 use ark_ff::{PrimeField, UniformRand};
 use ark_std::rand::{rngs::StdRng, SeedableRng};
@@ -10,6 +10,20 @@ fn generate_keys(rng: &mut StdRng) -> (Fr, G2Projective) {
     (sk, pk)
 }
 
+fn hash_to_g1(message: &[u8]) -> G1Projective {
+    let mut hash_value = [0u8; 16];
+    let len = hash_value.len().min(message.len());
+    hash_value[..len].copy_from_slice(&message[..len]);
+    
+    let scalar = Fr::from_le_bytes_mod_order(&hash_value);
+    G1Projective::generator().mul(scalar)
+}
+
+fn sign(message: &[u8], sk: &Fr) -> G1Projective {
+    let h = hash_to_g1(message);
+    h.mul(sk)
+}
+
 fn main() {
     // this is not suitable for cryptography :)
     let mut rng = StdRng::seed_from_u64(42);
@@ -18,6 +32,13 @@ fn main() {
     let (sk2, pk2) = generate_keys(&mut rng);
     let (sk3, pk3) = generate_keys(&mut rng);
 
-    println!("Secret Keys: {}, {}, {}", sk1, sk2, sk3);
-    println!("Public Keys: {:?}, {:?}, {:?}", pk1, pk2, pk3);
+    let message1 = b"Hello, Arkworks!";
+    let message2 = b"Another message!";
+    let message3 = b"Final message!";
+
+    let sig1 = sign(message1, &sk1);
+    let sig2 = sign(message2, &sk2);
+    let sig3 = sign(message3, &sk3);
+
+    println!("{} {} {}", sig1, sig2, sig3)
 }
